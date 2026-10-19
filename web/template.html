@@ -1,0 +1,644 @@
+<title>DNA Alignment Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: a lab bench — controls across the top, a results strip, then one workspace with tabs.
+   Bases carry the four Sanger-trace colours (A green, C blue, G amber, T red) wherever they label the matrix. */
+:root{
+  --bg:#f3f7f7; --surface:#ffffff; --sunk:#eaf0f1; --ink:#13222b; --muted:#56666f; --line:#d6e0e2;
+  --accent:#0d7a70; --accent-ink:#ffffff; --accent-soft:#dff1ee;
+  --match:#1c7a45; --match-bg:#dcf2e4; --mis:#9a5205; --mis-bg:#fbe8cf; --gap:#6b7880; --gap-bg:#e9eef0;
+  --pd:#2c64c9; --pd-bg:#e2ebfd; --pu:#7346cf; --pu-bg:#ede6fd; --pl:#b8336f; --pl-bg:#fbe4ef;
+  --cur:#b98a00; --cur-bg:#fff1b8; --path:#0d7a70; --path-bg:#d3f1ec;
+  --err:#b42318; --err-bg:#fde7e5; --warn:#8a5a00; --warn-bg:#fff4d6;
+  --bA:#1f9d55; --bC:#2f6fdb; --bG:#c98a00; --bT:#d23b3b;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f171b; --surface:#16222a; --sunk:#1c2a33; --ink:#e3ecef; --muted:#9aaab2; --line:#2a3a44;
+  --accent:#3cc2b2; --accent-ink:#06211e; --accent-soft:#163a37;
+  --match:#7fdba3; --match-bg:#173a28; --mis:#f2b26b; --mis-bg:#40301a; --gap:#9aa9b1; --gap-bg:#24323b;
+  --pd:#7ea8ff; --pd-bg:#1d2d4d; --pu:#b69bff; --pu-bg:#2c2350; --pl:#ff8fbf; --pl-bg:#4a1f33;
+  --cur:#ffd54a; --cur-bg:#4a3d0f; --path:#3cc2b2; --path-bg:#16403b;
+  --err:#ff9a90; --err-bg:#4a1d1a; --warn:#ffd27a; --warn-bg:#3d3112;
+  --bA:#4fd187; --bC:#7ea8ff; --bG:#f0c14b; --bT:#ff7b7b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171b; --surface:#16222a; --sunk:#1c2a33; --ink:#e3ecef; --muted:#9aaab2; --line:#2a3a44;
+  --accent:#3cc2b2; --accent-ink:#06211e; --accent-soft:#163a37;
+  --match:#7fdba3; --match-bg:#173a28; --mis:#f2b26b; --mis-bg:#40301a; --gap:#9aa9b1; --gap-bg:#24323b;
+  --pd:#7ea8ff; --pd-bg:#1d2d4d; --pu:#b69bff; --pu-bg:#2c2350; --pl:#ff8fbf; --pl-bg:#4a1f33;
+  --cur:#ffd54a; --cur-bg:#4a3d0f; --path:#3cc2b2; --path-bg:#16403b;
+  --err:#ff9a90; --err-bg:#4a1d1a; --warn:#ffd27a; --warn-bg:#3d3112;
+  --bA:#4fd187; --bC:#7ea8ff; --bG:#f0c14b; --bT:#ff7b7b; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.page>*{min-width:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body)}
+.page{max-width:1240px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:22px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.2vw,44px);line-height:1.08}
+h2{font-size:20px}
+h3{font-size:16px}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.mono{font-family:var(--f-mono)}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+
+header{display:grid;gap:10px;max-width:880px}
+header p{max-width:68ch;color:var(--muted)}
+.strand{font-family:var(--f-mono);font-size:13px;letter-spacing:.32em;color:var(--muted);user-select:none;overflow:hidden;white-space:nowrap}
+.strand b{font-weight:600}
+
+.bench{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.bench{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:14px;align-content:start;min-width:0}
+.stack{display:grid;gap:18px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.two{grid-template-columns:1fr}}
+label{display:grid;gap:5px;font-size:13px;font-weight:500;color:var(--muted)}
+textarea,input[type=number]{font:15px var(--f-mono);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+textarea{resize:vertical;min-height:72px;text-transform:uppercase;letter-spacing:.06em}
+textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+textarea.bad{border-color:var(--err)}
+.num{width:96px}
+.status{font-size:13px;min-height:20px}
+.status.ok{color:var(--match)}
+.msg{font-size:13px;border-radius:8px;padding:8px 10px}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+
+button{font:500 14px var(--f-body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.primary:hover:not(:disabled){filter:brightness(1.08);background:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;padding:6px 11px;border-radius:999px}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.hint{font-size:13px;color:var(--muted);background:var(--sunk);border-radius:8px;padding:8px 11px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:3px;background:var(--sunk);gap:3px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:7px 12px}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.12);color:var(--accent);font-weight:600}
+
+.stale{background:var(--warn-bg);color:var(--warn);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.summary{display:grid;gap:14px}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+@media (max-width:820px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stat{background:var(--surface);padding:12px 14px;display:grid;gap:2px}
+.stat span{font-size:12px;color:var(--muted);letter-spacing:.03em}
+.stat b{font:700 26px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat.lead b{color:var(--accent)}
+
+.aln-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.aln{font-family:var(--f-mono);display:grid;gap:2px;width:max-content}
+.aln .r{display:flex;align-items:center}
+.aln .lab{width:88px;flex:none;font:12px var(--f-body);color:var(--muted)}
+.aln .c{width:24px;height:26px;display:inline-grid;place-items:center;flex:none;border-radius:4px;margin-right:2px;font-size:15px}
+.aln .c.m{background:var(--match-bg);color:var(--match);font-weight:700}
+.aln .c.x{background:var(--mis-bg);color:var(--mis);font-weight:700}
+.aln .c.g{background:var(--gap-bg);color:var(--gap)}
+.aln .c.s{height:14px;color:var(--muted);font-weight:700}
+.aln .ruler .c{height:14px;font-size:10px;color:var(--muted)}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.key i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:10px 14px;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab:hover:not(:disabled){background:none;border-bottom-color:var(--line)}
+.view{display:grid;gap:14px;padding-top:16px}
+
+.work{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.work{grid-template-columns:minmax(0,1fr)}}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls input[type=range]{flex:1 1 200px;accent-color:var(--accent)}
+select{font:14px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+
+.dp-wrap{overflow:auto;max-height:620px;max-width:100%;width:max-content;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table.dp{border-collapse:separate;border-spacing:0;font:13px var(--f-mono);font-variant-numeric:tabular-nums}
+.dp th{position:sticky;background:var(--sunk);color:var(--ink);font-weight:700;padding:5px 7px;text-align:center;z-index:2}
+.dp thead th{top:0;border-bottom:1px solid var(--line)}
+.dp tbody th{left:0;border-right:1px solid var(--line);z-index:1}
+.dp thead th.corner{left:0;z-index:3}
+.dp th small{display:block;font-weight:400;font-size:9.5px;color:var(--muted)}
+.dp th.bA{box-shadow:inset 0 -3px 0 var(--bA)} .dp th.bC{box-shadow:inset 0 -3px 0 var(--bC)}
+.dp th.bG{box-shadow:inset 0 -3px 0 var(--bG)} .dp th.bT{box-shadow:inset 0 -3px 0 var(--bT)}
+.dp tbody th.bA{box-shadow:inset -3px 0 0 var(--bA)} .dp tbody th.bC{box-shadow:inset -3px 0 0 var(--bC)}
+.dp tbody th.bG{box-shadow:inset -3px 0 0 var(--bG)} .dp tbody th.bT{box-shadow:inset -3px 0 0 var(--bT)}
+.dp td{min-width:44px;height:38px;text-align:center;padding:2px 4px;border:1px solid var(--sunk);position:relative;transition:background .18s}
+.dp td .ar{position:absolute;top:1px;left:3px;font-size:10px;color:var(--muted);letter-spacing:-1px}
+.dp td .tag{position:absolute;bottom:1px;right:3px;font-size:9px;font-weight:700}
+.dp td.empty{color:var(--line)}
+.dp td.path{background:var(--path-bg);color:var(--path);font-weight:700;box-shadow:inset 0 0 0 2px var(--path)}
+.dp td.cur{background:var(--cur-bg);font-weight:700;box-shadow:inset 0 0 0 3px var(--cur)}
+.dp td.pd{background:var(--pd-bg);box-shadow:inset 0 0 0 2px var(--pd)} .dp td.pd .tag{color:var(--pd)}
+.dp td.pu{background:var(--pu-bg);box-shadow:inset 0 0 0 2px var(--pu)} .dp td.pu .tag{color:var(--pu)}
+.dp td.pl{background:var(--pl-bg);box-shadow:inset 0 0 0 2px var(--pl)} .dp td.pl .tag{color:var(--pl)}
+.dp td.maxc{outline:2px dashed var(--cur);outline-offset:-5px}
+
+.explain{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px;min-width:0}
+.cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cand{border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:grid;gap:1px;background:var(--bg)}
+.cand small{font-size:11.5px;color:var(--muted)}
+.cand b{font:700 22px var(--f-mono)}
+.cand.win{border:2px solid var(--path);background:var(--path-bg)}
+.formula{font:13px/1.6 var(--f-mono);background:var(--sunk);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px}
+.pill.m{background:var(--match-bg);color:var(--match)} .pill.x{background:var(--mis-bg);color:var(--mis)}
+.big{font:700 18px var(--f-body)}
+details{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+details summary{cursor:pointer;font-weight:500}
+.co{font:13px/1.35 var(--f-mono);white-space:pre;overflow-x:auto;background:var(--sunk);border-radius:8px;padding:8px 10px;margin-top:8px}
+.vs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.vs{grid-template-columns:minmax(0,1fr)}}
+.kv{display:flex;gap:22px;flex-wrap:wrap}
+.kv div{display:grid}
+.kv span{font-size:12px;color:var(--muted)}
+.kv b{font:700 22px var(--f-mono)}
+.exp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.exp{grid-template-columns:minmax(0,1fr)}}
+.exp textarea{min-height:150px;font-size:12.5px;text-transform:none;letter-spacing:0;white-space:pre;overflow:auto}
+.theory{display:grid;gap:18px;max-width:78ch}
+.theory section{display:grid;gap:6px}
+.theory ul{margin:0;padding-left:20px}
+.theory li{margin:3px 0}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="page">
+  <header>
+    <div class="strand" aria-hidden="true" id="strand"></div>
+    <span class="eyebrow">Dynamic Programming · Optimization Methods PBL</span>
+    <h1>DNA Sequence Alignment Using Dynamic Programming</h1>
+    <p>Two DNA sequences can differ by substitutions, insertions and deletions. The Needleman–Wunsch algorithm finds the best global alignment by solving every prefix pair once, storing the answers in a matrix, and building the full alignment from them. Run an alignment, then step through the matrix cell by cell.</p>
+  </header>
+
+  <div class="bench">
+    <section class="panel" aria-labelledby="h-seq">
+      <h2 id="h-seq">DNA sequences</h2>
+      <div class="two">
+        <div style="display:grid;gap:6px;min-width:0">
+          <label for="s1">Sequence 1 · matrix rows</label>
+          <textarea id="s1" spellcheck="false" autocomplete="off"></textarea>
+          <div class="status" id="st1"></div>
+        </div>
+        <div style="display:grid;gap:6px;min-width:0">
+          <label for="s2">Sequence 2 · matrix columns</label>
+          <textarea id="s2" spellcheck="false" autocomplete="off"></textarea>
+          <div class="status" id="st2"></div>
+        </div>
+      </div>
+      <div style="display:grid;gap:8px">
+        <span class="small muted">Examples (loads and runs)</span>
+        <div class="chips" id="examples"></div>
+        <div class="hint" id="exHint"></div>
+      </div>
+      <div class="row">
+        <label for="len1">Random length 1<input id="len1" class="num" type="number" min="0" max="500" value="10"></label>
+        <label for="len2">Random length 2<input id="len2" class="num" type="number" min="0" max="500" value="10"></label>
+        <button id="r1">Random seq 1</button>
+        <button id="r2">Random seq 2</button>
+        <button id="rb">Random both</button>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-sc">
+        <h2 id="h-sc">Scoring</h2>
+        <div class="row">
+          <label for="sm">Match<input id="sm" class="num" type="number" value="2" step="1"></label>
+          <label for="sx">Mismatch<input id="sx" class="num" type="number" value="-1" step="1"></label>
+          <label for="sg">Gap<input id="sg" class="num" type="number" value="-2" step="1"></label>
+          <button id="defaults">Defaults</button>
+        </div>
+        <div id="scMsg" style="display:grid;gap:6px"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-al">
+        <h2 id="h-al">Algorithm</h2>
+        <div class="seg" role="group" aria-label="Algorithm">
+          <button id="aNW" aria-pressed="true">Needleman–Wunsch · global</button>
+          <button id="aSW" aria-pressed="false">Smith–Waterman · local</button>
+        </div>
+        <div class="row">
+          <button class="primary" id="run">Run alignment</button>
+          <button id="clear">Clear</button>
+        </div>
+        <div class="small muted" id="runNote"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="stale" id="stale" hidden>Inputs changed since the last run. Press Run alignment to recalculate; the results below are for the previous inputs.</div>
+
+  <section class="summary" id="summary" aria-labelledby="h-res">
+    <h2 id="h-res">Results</h2>
+    <div class="stats" id="stats"></div>
+    <div class="small muted" id="check"></div>
+    <div id="alnBox"></div>
+    <div id="coBox"></div>
+  </section>
+
+  <section>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-v="fill" aria-selected="true">Matrix fill</button>
+      <button class="tab" role="tab" data-v="tb" aria-selected="false">Traceback</button>
+      <button class="tab" role="tab" data-v="vs" aria-selected="false">Global vs local</button>
+      <button class="tab" role="tab" data-v="exp" aria-selected="false">Export</button>
+      <button class="tab" role="tab" data-v="th" aria-selected="false">How it works</button>
+    </div>
+
+    <div class="view" id="v-fill">
+      <div class="controls">
+        <button id="fStart" title="Jump to F[1][1]">Start</button>
+        <button id="fPrev">Previous</button>
+        <button id="fNext">Next step</button>
+        <button class="primary" id="fPlay">Play</button>
+        <button id="fReset">Reset</button>
+        <label for="speed" style="display:flex;align-items:center;gap:6px">Speed
+          <select id="speed"><option value="1300">Slow</option><option value="700" selected>Normal</option><option value="320">Fast</option><option value="120">Very fast</option></select></label>
+        <input type="range" id="fSlider" min="0" value="0" aria-label="Fill step">
+      </div>
+      <div class="work">
+        <div style="display:grid;gap:10px;min-width:0"><div id="fMatrix"></div><div class="key" id="fKey"></div></div>
+        <div class="explain" id="fExplain" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="view" id="v-tb" hidden>
+      <p class="muted" id="tbIntro"></p>
+      <div class="controls">
+        <button id="tStart">Start</button>
+        <button id="tPrev">Previous</button>
+        <button id="tNext">Next step</button>
+        <button class="primary" id="tPlay">Play</button>
+        <button id="tReset">Reset</button>
+        <input type="range" id="tSlider" min="0" value="0" aria-label="Traceback step">
+      </div>
+      <div class="work">
+        <div style="display:grid;gap:10px;min-width:0"><div id="tMatrix"></div><div class="key" id="tKey"></div></div>
+        <div class="explain" id="tExplain" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="view" id="v-vs" hidden>
+      <p class="muted" style="max-width:80ch"><b>Global</b> alignment (Needleman–Wunsch) must account for every base of both sequences. <b>Local</b> alignment (Smith–Waterman) searches for the most similar region: cells never fall below 0, so a poor stretch can be dropped and a fresh alignment started. Both are computed independently with the same scoring.</p>
+      <div class="vs" id="vsBox"></div>
+    </div>
+
+    <div class="view" id="v-exp" hidden>
+      <p class="muted" style="max-width:80ch">Copy any block below and paste it into a text editor or spreadsheet. The values come from the same result shown above. The Streamlit version of this project also downloads these as files.</p>
+      <div class="exp" id="expBox"></div>
+    </div>
+
+    <div class="view" id="v-th" hidden><div class="theory" id="theory"></div></div>
+  </section>
+
+  <footer>DNA Sequence Alignment Using Dynamic Programming · Needleman–Wunsch and Smith–Waterman · Course project for Optimization Methods and Applications (module 3: Dynamic Programming).</footer>
+</div>
+
+<script>
+/*__DNA_ALIGN_JS__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var ARROW = { D: "↖", U: "↑", L: "←" }, NAME = { D: "diagonal", U: "up", L: "left" };
+  var MAX_CELLS = 2601;
+  var EXAMPLES = [
+    ["identical", "Identical", "AGTCAG", "AGTCAG", "Every column matches, so the traceback runs straight down the diagonal and identity is 100%."],
+    ["substitution", "One substitution", "AGTCAG", "AGGCAG", "The 3rd base differs (T vs G). One mismatch (−1) is cheaper than two gaps (−4), so the bases stay aligned."],
+    ["insertion", "Insertion", "AGTCA", "AGTTCA", "Sequence 2 has an extra T. One gap in sequence 1 keeps every other base matched."],
+    ["deletion", "Deletion", "AGTCA", "AGCA", "The T is missing from sequence 2. One gap in sequence 2 gives AGTCA / AG-CA."],
+    ["multiple", "Multiple differences", "GATTACAGT", "GCATGCAT", "A mix of substitutions and an indel. Watch the DP trade mismatches against gaps."],
+    ["ties", "Several optimal alignments", "ATTA", "ATA", "Either T can be the one opposite the gap. Both alignments score the same, so the matrix has tied pointers."]
+  ];
+  var S = { algo: DNA.GLOBAL, nw: null, sw: null, key: null, f: 0, t: 0, fTimer: null, tTimer: null, view: "fill", example: "deletion" };
+
+  // decorative strand built from the real example
+  (function () {
+    var s = "AGTCAAGCAGATTACAGCTAGGCTAACGTTAGC".repeat(4), h = "";
+    for (var k = 0; k < s.length; k++) h += '<b style="color:var(--b' + s[k] + ')">' + s[k] + "</b>";
+    $("strand").innerHTML = h;
+  })();
+
+  // ---------------------------------------------------------------- inputs
+  function scoring() { return { match: Number($("sm").value), mismatch: Number($("sx").value), gap: Number($("sg").value) }; }
+  function inputs() {
+    var v1 = DNA.validateSequence($("s1").value, "Sequence 1"), v2 = DNA.validateSequence($("s2").value, "Sequence 2");
+    var sc = scoring(), vs = DNA.validateScoring(sc.match, sc.mismatch, sc.gap);
+    return { v1: v1, v2: v2, sc: sc, vs: vs, ok: v1.ok && v2.ok && !vs.errors.length,
+      key: [v1.sequence, v2.sequence, sc.match, sc.mismatch, sc.gap].join("|") };
+  }
+  function showValidation() {
+    var x = inputs();
+    [["s1", "st1", x.v1], ["s2", "st2", x.v2]].forEach(function (t) {
+      var el = $(t[1]), v = t[2];
+      $(t[0]).classList.toggle("bad", !v.ok);
+      if (v.ok) { el.className = "status ok"; el.textContent = "Valid · length " + v.sequence.length + (v.sequence ? "" : " · empty (aligns to all gaps)"); }
+      else { el.className = "status"; el.innerHTML = v.errors.map(function (e) { return '<div class="msg err">' + esc(e) + "</div>"; }).join(""); }
+    });
+    $("scMsg").innerHTML = x.vs.errors.map(function (e) { return '<div class="msg err">' + esc(e) + "</div>"; }).join("") +
+      x.vs.warnings.map(function (e) { return '<div class="msg warn">' + esc(e) + "</div>"; }).join("");
+    $("run").disabled = !x.ok;
+    $("runNote").textContent = x.ok ? "" : "Fix the highlighted problems to enable the alignment.";
+    $("stale").hidden = !S.key || x.key === S.key;
+  }
+  ["s1", "s2", "sm", "sx", "sg"].forEach(function (id) { $(id).addEventListener("input", showValidation); });
+
+  function run() {
+    var x = inputs();
+    if (!x.ok) { showValidation(); return; }
+    stop("f"); stop("t");
+    $("s1").value = x.v1.sequence; $("s2").value = x.v2.sequence;
+    S.nw = DNA.needlemanWunsch(x.v1.sequence, x.v2.sequence, x.sc);
+    S.sw = DNA.smithWaterman(x.v1.sequence, x.v2.sequence, x.sc);
+    S.key = x.key; S.f = 0; S.t = 0;
+    showValidation(); renderAll();
+  }
+  $("run").onclick = run;
+  $("clear").onclick = function () { $("s1").value = ""; $("s2").value = ""; S.example = null; renderExamples(); showValidation(); };
+  $("defaults").onclick = function () { $("sm").value = 2; $("sx").value = -1; $("sg").value = -2; showValidation(); };
+  function setAlgo(a) { S.algo = a; $("aNW").setAttribute("aria-pressed", a === DNA.GLOBAL); $("aSW").setAttribute("aria-pressed", a === DNA.LOCAL);
+    stop("f"); stop("t"); S.f = 0; S.t = 0; if (S.nw) renderAll(); }
+  $("aNW").onclick = function () { setAlgo(DNA.GLOBAL); };
+  $("aSW").onclick = function () { setAlgo(DNA.LOCAL); };
+  function rnd(which) {
+    var l1 = Math.max(0, Math.min(500, parseInt($("len1").value, 10) || 0)), l2 = Math.max(0, Math.min(500, parseInt($("len2").value, 10) || 0));
+    if (which !== 2) $("s1").value = DNA.randomDNA(l1);
+    if (which !== 1) $("s2").value = DNA.randomDNA(l2);
+    S.example = null; renderExamples(); run();
+  }
+  $("r1").onclick = function () { rnd(1); }; $("r2").onclick = function () { rnd(2); }; $("rb").onclick = function () { rnd(0); };
+
+  function renderExamples() {
+    $("examples").innerHTML = EXAMPLES.map(function (e) {
+      return '<button class="chip" data-k="' + e[0] + '" aria-pressed="' + (S.example === e[0]) + '">' + esc(e[1]) + "</button>"; }).join("");
+    var ex = EXAMPLES.filter(function (e) { return e[0] === S.example; })[0];
+    $("exHint").textContent = ex ? ex[4] : "Pick an example to see what it demonstrates.";
+  }
+  $("examples").onclick = function (ev) {
+    var b = ev.target.closest("button[data-k]"); if (!b) return;
+    var e = EXAMPLES.filter(function (x) { return x[0] === b.dataset.k; })[0];
+    S.example = e[0]; $("s1").value = e[2]; $("s2").value = e[3]; renderExamples(); run();
+  };
+
+  // ---------------------------------------------------------------- shared renderers
+  function main() { return S.algo === DNA.GLOBAL ? S.nw : S.sw; }
+  function tooBig(r) { return (r.seq1.length + 1) * (r.seq2.length + 1) > MAX_CELLS; }
+
+  function alignmentHTML(a1, a2) {
+    if (!a1) return '<div class="aln-wrap"><em class="muted">Empty alignment.</em></div>';
+    var kinds = [], k;
+    for (k = 0; k < a1.length; k++) kinds.push(a1[k] === "-" || a2[k] === "-" ? "g" : a1[k] === a2[k] ? "m" : "x");
+    var t = { m: "match", x: "mismatch", g: "gap" }, sym = { m: "|", x: "·", g: "&nbsp;" };
+    function row(lab, s) { var h = '<div class="r"><span class="lab">' + lab + "</span>"; for (var q = 0; q < s.length; q++) h += '<span class="c ' + kinds[q] + '" title="' + t[kinds[q]] + '">' + s[q] + "</span>"; return h + "</div>"; }
+    var ruler = '<div class="r ruler"><span class="lab">column</span>', mid = '<div class="r"><span class="lab"></span>';
+    for (k = 0; k < kinds.length; k++) { ruler += '<span class="c">' + ((k + 1) % 5 === 0 || k === 0 ? k + 1 : "") + "</span>"; mid += '<span class="c s">' + sym[kinds[k]] + "</span>"; }
+    return '<div class="aln-wrap"><div class="aln">' + ruler + "</div>" + row("Sequence 1", a1) + mid + "</div>" + row("Sequence 2", a2) + "</div></div>" +
+      '<div class="key" style="margin-top:8px"><span><i style="background:var(--match-bg)"></i>Match ( | )</span><span><i style="background:var(--mis-bg)"></i>Mismatch ( · )</span><span><i style="background:var(--gap-bg)"></i>Gap ( - )</span></div>';
+  }
+
+  function matrixHTML(r, o) {
+    o = o || {};
+    var m = r.seq1.length, n = r.seq2.length, k = o.filled == null ? m * n : o.filled, cur = o.current, preds = {};
+    if (cur && (cur[0] || cur[1])) {
+      var ci = cur[0], cj = cur[1];
+      if (ci && cj) { preds[(ci - 1) + "," + (cj - 1)] = "D"; preds[(ci - 1) + "," + cj] = "U"; preds[ci + "," + (cj - 1)] = "L"; }
+      else if (ci) preds[(ci - 1) + "," + cj] = "U"; else preds[ci + "," + (cj - 1)] = "L";
+      if (o.predFilter != null) Object.keys(preds).forEach(function (c) { if (o.predFilter.indexOf(preds[c]) < 0) delete preds[c]; });
+    }
+    var path = {}; (o.path || []).forEach(function (p) { path[p[0] + "," + p[1]] = 1; });
+    var maxs = {}; if (o.showMax) r.maxCells.forEach(function (p) { maxs[p[0] + "," + p[1]] = 1; });
+    var h = '<div class="dp-wrap"><table class="dp"><thead><tr><th class="corner"></th><th>-<small>j=0</small></th>';
+    for (var j = 1; j <= n; j++) h += '<th class="b' + r.seq2[j - 1] + '">' + r.seq2[j - 1] + "<small>j=" + j + "</small></th>";
+    h += "</tr></thead><tbody>";
+    for (var i = 0; i <= m; i++) {
+      h += "<tr><th" + (i ? ' class="b' + r.seq1[i - 1] + '"' : "") + ">" + (i ? r.seq1[i - 1] : "-") + "<small>i=" + i + "</small></th>";
+      for (j = 0; j <= n; j++) {
+        if (i && j && (i - 1) * n + j > k) { h += '<td class="empty">·</td>'; continue; }
+        var id = i + "," + j, cls = [], tag = "";
+        if (cur && cur[0] === i && cur[1] === j) cls.push("cur");
+        else if (preds[id]) { cls.push("p" + preds[id].toLowerCase()); tag = '<span class="tag">' + preds[id] + "</span>"; }
+        else if (path[id]) cls.push("path");
+        if (maxs[id]) cls.push("maxc");
+        var ar = r.P[i][j] ? '<span class="ar">' + r.P[i][j].split("").map(function (d) { return ARROW[d]; }).join("") + "</span>" : "";
+        h += '<td class="' + cls.join(" ") + '" title="F[' + i + "][" + j + "] = " + r.F[i][j] + '">' + ar + r.F[i][j] + tag + "</td>";
+      }
+      h += "</tr>";
+    }
+    return h + "</tbody></table></div>";
+  }
+  function keyHTML(full) {
+    var items = [["--cur", "--cur-bg", "Current cell"], ["--pd", "--pd-bg", "Diagonal predecessor (D)"], ["--pu", "--pu-bg", "Upper predecessor (U)"],
+      ["--pl", "--pl-bg", "Left predecessor (L)"], ["--path", "--path-bg", "Traceback path"]];
+    if (!full) items = items.slice(4);
+    return items.map(function (x) { return '<span><i style="background:var(' + x[1] + ');box-shadow:inset 0 0 0 2px var(' + x[0] + ')"></i>' + x[2] + "</span>"; }).join("") +
+      "<span>↖ ↑ ← stored pointers (two or more = tie)</span><span>Row and column “-” = empty prefix</span>";
+  }
+
+  // ---------------------------------------------------------------- results
+  function renderSummary() {
+    var r = main(), st = DNA.stats(r);
+    $("h-res").textContent = "Results · " + r.algorithm;
+    var cells = [["Optimal score", st.score, 1], ["Matches", st.matches], ["Mismatches", st.mismatches], ["Gap positions", st.gaps],
+      ["Alignment length", st.length], ["Identity", st.identity.toFixed(2) + "%"]];
+    $("stats").innerHTML = cells.map(function (c) { return '<div class="stat' + (c[2] ? " lead" : "") + '"><span>' + c[0] + "</span><b>" + c[1] + "</b></div>"; }).join("");
+    $("check").innerHTML = "Identity = matches ÷ alignment length × 100, with gap columns counted in the length. Gaps: " + st.gaps1 + " in sequence 1, " + st.gaps2 +
+      " in sequence 2. Score re-added column by column: <b>" + st.rescored + "</b>" + (r.local ? ", equal to the highest matrix cell." : ", equal to the bottom-right cell F[m][n].") +
+      (r.local && r.a1 ? " Region: sequence 1 positions " + (r.start[0] + 1) + "–" + r.end[0] + ", sequence 2 positions " + (r.start[1] + 1) + "–" + r.end[1] + "." : "");
+    $("alnBox").innerHTML = alignmentHTML(r.a1, r.a2);
+    if (!r.local && r.optimalCount > 1) {
+      var list = DNA.enumerateGlobal(r, 12);
+      $("coBox").innerHTML = "<details><summary>This input has " + (r.optimalCount > 1e15 ? "a very large number of" : r.optimalCount) +
+        " equally optimal alignments. Show them</summary><p class='small muted' style='margin-top:6px'>Ties in the matrix (cells with more than one arrow) open alternative paths. The main result follows diagonal, then up, then left at every tie.</p>" +
+        list.map(function (a, q) { return '<div class="co">#' + (q + 1) + "\n" + a[0] + "\n" + DNA.matchLine(a[0], a[1]) + "\n" + a[1] + "</div>"; }).join("") +
+        (r.optimalCount > 12 ? "<p class='small muted'>Showing 12 of " + r.optimalCount + ".</p>" : "") + "</details>";
+    } else $("coBox").innerHTML = "";
+  }
+
+  // ---------------------------------------------------------------- fill walkthrough
+  function renderFill() {
+    var r = main(), K = r.steps.length, k = S.f;
+    $("fSlider").max = K; $("fSlider").value = k;
+    $("fPrev").disabled = k === 0; $("fNext").disabled = k === K; $("fStart").disabled = K === 0;
+    $("fPlay").textContent = S.fTimer ? "Pause" : "Play";
+    var cur = k ? [r.steps[k - 1].i, r.steps[k - 1].j] : null;
+    $("fMatrix").innerHTML = tooBig(r) ? '<div class="hint">The matrix has ' + ((r.seq1.length + 1) * (r.seq2.length + 1)).toLocaleString() +
+      " cells, too many to draw clearly. Use sequences of up to 50 bases to watch it fill. The calculation on the right is still exact.</div>"
+      : matrixHTML(r, { filled: k, current: cur, path: k === K ? r.path : [], showMax: k === K && r.local });
+    $("fKey").innerHTML = tooBig(r) ? "" : keyHTML(true);
+    var g = r.sc.gap, h;
+    if (K === 0) h = "<h3>No inner cells</h3><p>One sequence is empty, so the matrix is only the initialised first row and column.</p>";
+    else if (k === 0) h = "<h3>Step 0 of " + K + " · Initialisation</h3>" + (r.local
+      ? "<p>Smith–Waterman fills the first row and column with <b>0</b>. A local alignment may start anywhere, so no prefix has to be paid for.</p>"
+      : "<p>First row F[0][j] = j × gap = j × (" + g + "). First column F[i][0] = i × (" + g + ").</p><p>Aligning a prefix of length k with an empty sequence needs exactly k gaps, so these are the base cases of the recursion.</p>") +
+      "<p class='muted small'>Press Next step or Play to fill the matrix row by row.</p>";
+    else {
+      var s = r.steps[k - 1], same = s.a === s.b;
+      var box = function (d, lab, f, v) { return '<div class="cand' + (s.chosen.indexOf(d) >= 0 ? " win" : "") + '"><small>' + lab + "</small><b>" + v + "</b><small>" + f + "</small></div>"; };
+      var chosen = s.zero ? "the floor of 0 (local alignment restarts here)" : s.chosen.split("").map(function (d) { return ARROW[d] + " " + NAME[d]; }).join(" and ");
+      var why = s.zero ? "Every candidate is 0 or less, so Smith–Waterman resets the cell to 0." :
+        s.chosen.length > 1 ? "Tie between " + s.chosen.split("").map(function (d) { return NAME[d]; }).join(" and ") + ". Every tied direction is stored as a valid pointer, which is how multiple optimal alignments arise." :
+        "Only the " + NAME[s.chosen] + " move reaches the maximum: " + (s.chosen === "D" ? "align " + s.a + " with " + s.b : s.chosen === "U" ? "align " + s.a + " with a gap" : "align a gap with " + s.b) + ".";
+      h = "<h3>Step " + k + " of " + K + " · cell F[" + s.i + "][" + s.j + "]</h3>" +
+        "<p>Comparing <b class='mono'>" + s.a + "</b> (sequence 1, position " + s.i + ") with <b class='mono'>" + s.b + "</b> (sequence 2, position " + s.j + ") " +
+        '<span class="pill ' + (same ? "m" : "x") + '">' + (same ? "match" : "mismatch") + "</span> substitution score <b>" + (s.s > 0 ? "+" : "") + s.s + "</b></p>" +
+        '<div class="cmp">' + box("D", "↖ Diagonal", "F[" + (s.i - 1) + "][" + (s.j - 1) + "] " + (s.s >= 0 ? "+ " : "− ") + Math.abs(s.s), s.diag) +
+        box("U", "↑ Up", "F[" + (s.i - 1) + "][" + s.j + "] " + (g >= 0 ? "+ " : "− ") + Math.abs(g), s.up) +
+        box("L", "← Left", "F[" + s.i + "][" + (s.j - 1) + "] " + (g >= 0 ? "+ " : "− ") + Math.abs(g), s.left) + "</div>" +
+        '<div class="formula">diagonal = ' + (s.diag - s.s) + " + (" + s.s + ") = " + s.diag + "\nup       = " + (s.up - g) + " + (" + g + ") = " + s.up +
+        "\nleft     = " + (s.left - g) + " + (" + g + ") = " + s.left + "\nF[" + s.i + "][" + s.j + "] = max(" + (r.local ? "0, " : "") + s.diag + ", " + s.up + ", " + s.left + ") = " + s.best + "</div>" +
+        '<p class="big">Selected maximum: ' + s.best + "</p><p>From " + chosen + ". " + why + "</p>" +
+        (k === K ? "<p class='muted small'>Matrix complete. " + (r.local ? "The dashed cell holds the highest score; the traceback starts there." : "F[" + s.i + "][" + s.j + "] = " + s.best + " is the optimal global score.") + " The green path is the traceback.</p>" : "");
+    }
+    $("fExplain").innerHTML = h;
+  }
+  function stop(w) { if (S[w + "Timer"]) { clearInterval(S[w + "Timer"]); S[w + "Timer"] = null; } }
+  function setF(v) { stop("f"); S.f = v; renderFill(); }
+  $("fStart").onclick = function () { setF(Math.min(1, main().steps.length)); };
+  $("fPrev").onclick = function () { setF(Math.max(0, S.f - 1)); };
+  $("fNext").onclick = function () { setF(Math.min(main().steps.length, S.f + 1)); };
+  $("fReset").onclick = function () { setF(0); };
+  $("fSlider").oninput = function () { setF(Number(this.value)); };
+  $("fPlay").onclick = function () {
+    if (S.fTimer) { stop("f"); renderFill(); return; }
+    var K = main().steps.length; if (S.f >= K) S.f = 0;
+    S.fTimer = setInterval(function () { if (S.f >= main().steps.length) { stop("f"); } else S.f++; renderFill(); }, Number($("speed").value));
+    renderFill();
+  };
+  $("speed").onchange = function () { if (S.fTimer) { stop("f"); $("fPlay").click(); } if (S.tTimer) { stop("t"); $("tPlay").click(); } };
+
+  // ---------------------------------------------------------------- traceback walkthrough
+  function renderTb() {
+    var r = main(), T = r.tb.length, t = r.tb[S.t];
+    $("tbIntro").innerHTML = "Traceback starts at <b>" + (r.local ? "the highest-scoring cell" : "the bottom-right cell F[m][n]") + "</b> and follows the stored pointers back to <b>" +
+      (r.local ? "the first cell holding 0" : "F[0][0]") + "</b>. A diagonal move aligns two bases, an up move puts a gap in sequence 2, and a left move puts a gap in sequence 1.";
+    $("tSlider").max = Math.max(0, T - 1); $("tSlider").value = S.t; $("tSlider").hidden = T < 2;
+    $("tPrev").disabled = S.t === 0; $("tNext").disabled = S.t >= T - 1;
+    $("tPlay").textContent = S.tTimer ? "Pause" : "Play";
+    var visited = r.tb.slice(0, S.t).map(function (x) { return [x.i, x.j]; });
+    $("tMatrix").innerHTML = tooBig(r) ? '<div class="hint">Matrix too large to draw. The traceback text on the right is exact.</div>'
+      : matrixHTML(r, { current: [t.i, t.j], path: visited, predFilter: t.move ? t.options : "", showMax: r.local });
+    $("tKey").innerHTML = tooBig(r) ? "" : keyHTML(true);
+    var h = "<h3>Traceback step " + (S.t + 1) + " of " + T + "</h3><p>Current cell <b class='mono'>F[" + t.i + "][" + t.j + "] = " + t.score + "</b></p>";
+    if (t.move) {
+      h += "<p>Pointer <b>" + ARROW[t.move] + " " + NAME[t.move] + "</b> to F[" + t.ni + "][" + t.nj + "] = " + r.F[t.ni][t.nj] + ". Add column <b class='mono'>" + t.col1 + " / " + t.col2 + "</b>.</p>";
+      if (t.options.length > 1) h += '<div class="msg warn">Tie: ' + t.options.split("").map(function (d) { return NAME[d]; }).join(", ") +
+        " all lead to an optimal alignment. This walkthrough follows diagonal, then up, then left.</div>";
+      h += '<div class="formula">F[' + t.ni + "][" + t.nj + "] " + (t.move === "D" ? (r.sc[t.col1 === t.col2 ? "match" : "mismatch"] >= 0 ? "+ " : "− ") + Math.abs(r.sc[t.col1 === t.col2 ? "match" : "mismatch"]) : (r.sc.gap >= 0 ? "+ " : "− ") + Math.abs(r.sc.gap)) +
+        " = " + t.score + "  ✓</div>";
+    } else if (r.local && !r.a1) h += "<p>Every cell is 0. The sequences share no positively scoring region, so the local alignment is empty.</p>";
+    else h += "<p>" + (r.local ? "This cell holds 0, so the local alignment starts here. Traceback complete." : "Reached F[0][0]. Traceback complete.") + "</p>";
+    h += "<p class='small muted'>Alignment built so far (it grows from the right-hand end):</p>" + alignmentHTML(t.p1, t.p2);
+    $("tExplain").innerHTML = h;
+  }
+  function setT(v) { stop("t"); S.t = v; renderTb(); }
+  $("tStart").onclick = function () { setT(0); };
+  $("tPrev").onclick = function () { setT(Math.max(0, S.t - 1)); };
+  $("tNext").onclick = function () { setT(Math.min(main().tb.length - 1, S.t + 1)); };
+  $("tReset").onclick = function () { setT(0); };
+  $("tSlider").oninput = function () { setT(Number(this.value)); };
+  $("tPlay").onclick = function () {
+    if (S.tTimer) { stop("t"); renderTb(); return; }
+    if (S.t >= main().tb.length - 1) S.t = 0;
+    S.tTimer = setInterval(function () { if (S.t >= main().tb.length - 1) stop("t"); else S.t++; renderTb(); }, Number($("speed").value));
+    renderTb();
+  };
+
+  // ---------------------------------------------------------------- comparison
+  function renderVs() {
+    $("vsBox").innerHTML = [S.nw, S.sw].map(function (r) {
+      var st = DNA.stats(r), note;
+      if (r.local) note = r.a1 ? "Region: sequence 1 [" + (r.start[0] + 1) + "–" + r.end[0] + "] of " + r.seq1.length + ", sequence 2 [" + (r.start[1] + 1) + "–" + r.end[1] + "] of " + r.seq2.length + ". Ends at F[" + r.end[0] + "][" + r.end[1] + "] = " + r.score + "."
+        : "No positively scoring region exists, so the local alignment is empty.";
+      else note = "Covers all " + r.seq1.length + " + " + r.seq2.length + " bases. Score = F[" + r.seq1.length + "][" + r.seq2.length + "].";
+      return '<div class="panel"><h3>' + r.algorithm + " · " + (r.local ? "local" : "global") + '</h3><div class="kv"><div><span>Score</span><b>' + r.score +
+        "</b></div><div><span>Identity</span><b>" + st.identity.toFixed(1) + "%</b></div><div><span>Length</span><b>" + st.length + "</b></div></div>" +
+        alignmentHTML(r.a1, r.a2) + '<p class="small muted">' + note + "</p>" +
+        (tooBig(r) ? "" : "<details><summary>Show matrix</summary><div style='margin-top:10px'>" + matrixHTML(r, { path: r.path, showMax: r.local }) + "</div></details>") + "</div>";
+    }).join("") + '<p class="small muted" style="grid-column:1/-1">The local score is always at least the global score: the full global alignment is one of the regions local alignment may pick, and an empty alignment scoring 0 is always allowed.</p>';
+  }
+
+  // ---------------------------------------------------------------- export
+  function exports() {
+    var r = main(), st = DNA.stats(r), sc = r.sc, tag = r.local ? "local" : "global";
+    var aln = r.algorithm + " alignment\nSequence 1: " + (r.seq1 || "(empty)") + "\nSequence 2: " + (r.seq2 || "(empty)") + "\nLegend: | match   . mismatch   (blank) gap\n\n";
+    for (var k = 0; k < r.a1.length; k += 60) aln += "Seq 1  " + r.a1.substr(k, 60) + "\n       " + DNA.matchLine(r.a1, r.a2).substr(k, 60) + "\nSeq 2  " + r.a2.substr(k, 60) + "\n\n";
+    if (!r.a1) aln += "(empty alignment)\n";
+    var stCsv = "metric,value\nalgorithm," + r.algorithm + "\nscore," + st.score + "\nmatches," + st.matches + "\nmismatches," + st.mismatches + "\ngap_positions," + st.gaps +
+      "\ngaps_in_seq1," + st.gaps1 + "\ngaps_in_seq2," + st.gaps2 + "\nalignment_length," + st.length + "\nidentity_percent," + st.identity.toFixed(2) + "\n";
+    var mx = "," + ["-"].concat(r.seq2.split("")).join(",") + "\n";
+    for (var i = 0; i < r.F.length; i++) mx += (i ? r.seq1[i - 1] : "-") + "," + r.F[i].join(",") + "\n";
+    var rep = "DNA SEQUENCE ALIGNMENT USING DYNAMIC PROGRAMMING - ANALYSIS REPORT\n" + "=".repeat(66) + "\nAlgorithm: " + r.algorithm + " (" + tag + " alignment)\n\nINPUT\n  Sequence 1 (" + r.seq1.length + " bp): " + (r.seq1 || "(empty)") +
+      "\n  Sequence 2 (" + r.seq2.length + " bp): " + (r.seq2 || "(empty)") + "\n  Scoring: match " + sc.match + ", mismatch " + sc.mismatch + ", gap " + sc.gap + "\n\nOPTIMAL ALIGNMENT\n" + aln.split("\n\n").slice(1).join("\n\n").trimEnd() +
+      "\n\nSTATISTICS\n  Optimal alignment score: " + st.score + "\n  Matches: " + st.matches + "\n  Mismatches: " + st.mismatches + "\n  Gap positions: " + st.gaps + " (seq 1: " + st.gaps1 + ", seq 2: " + st.gaps2 + ")\n  Alignment length: " + st.length +
+      "\n  Sequence identity: " + st.identity.toFixed(2) + "%\n  Score re-computed column by column: " + st.rescored + "\n" +
+      (r.local ? "\nLOCAL REGION\n  Highest cell F[" + r.end[0] + "][" + r.end[1] + "] = " + r.score + "\n" : "\nNumber of optimal alignments: " + r.optimalCount + "\n") +
+      "\nDP MATRIX (CSV)\n" + mx + "\nTRACEBACK\n" + r.tb.map(function (t, q) { return "  " + (q + 1) + ". F[" + t.i + "][" + t.j + "] = " + t.score + (t.move ? "  " + NAME[t.move] + " " + ARROW[t.move] + "  column " + t.col1 + "/" + t.col2 : "  stop"); }).join("\n") +
+      "\n\nComplexity: time O(mn), space O(mn) -> " + (r.seq1.length + 1) * (r.seq2.length + 1) + " cells.\n";
+    return [["Aligned sequences", "alignment_" + tag + ".txt", aln], ["Statistics", "statistics_" + tag + ".csv", stCsv], ["DP matrix", "dp_matrix_" + tag + ".csv", mx], ["Full analysis report", "report_" + tag + ".txt", rep]];
+  }
+  function renderExp() {
+    $("expBox").innerHTML = exports().map(function (e, q) {
+      return '<div class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + e[0] + ' <span class="small muted mono">' + e[1] + '</span></h3><button data-c="' + q + '">Copy</button></div>' +
+        '<label for="ex' + q + '" class="small">Contents</label><textarea id="ex' + q + '" readonly>' + esc(e[2]) + "</textarea></div>";
+    }).join("");
+  }
+  $("expBox").onclick = function (ev) {
+    var b = ev.target.closest("button[data-c]"); if (!b) return;
+    var ta = $("ex" + b.dataset.c), done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1400); };
+    var fallback = function () { ta.focus(); ta.select(); b.textContent = "Selected · press Ctrl+C"; setTimeout(function () { b.textContent = "Copy"; }, 2200); };
+    try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (e) { fallback(); }
+  };
+
+  // ---------------------------------------------------------------- theory (with worked example from the live result)
+  function renderTheory() {
+    var r = S.nw, sc = r.sc, g = sc.gap, worked = "";
+    if (r.steps.length && !tooBig(r)) {
+      var a = r.steps[0], z = r.steps[r.steps.length - 1];
+      worked = "<p>Sequences <b class='mono'>" + r.seq1 + "</b> and <b class='mono'>" + r.seq2 + "</b>, scoring " + sc.match + " / " + sc.mismatch + " / " + g + ".</p><ul>" +
+        "<li><b>Initialise</b> the first row and column: 0, " + g + ", " + 2 * g + ", …</li>" +
+        "<li><b>First cell</b> F[1][1] (" + a.a + " vs " + a.b + "): max(diagonal " + a.diag + ", up " + a.up + ", left " + a.left + ") = <b>" + a.best + "</b>.</li>" +
+        "<li><b>Last cell</b> F[" + z.i + "][" + z.j + "] (" + z.a + " vs " + z.b + "): max(diagonal " + z.diag + ", up " + z.up + ", left " + z.left + ") = <b>" + z.best + "</b>, the optimal global score.</li>" +
+        "<li><b>Traceback</b> takes " + (r.tb.length - 1) + " moves and gives the alignment below.</li></ul>" +
+        '<div class="co">' + r.a1 + "\n" + DNA.matchLine(r.a1, r.a2) + "\n" + r.a2 + "</div>" + matrixHTML(r, { path: r.path });
+    } else worked = "<p class='muted'>Run a non-empty alignment of up to 50 bases to see a worked example here.</p>";
+    $("theory").innerHTML =
+      "<section><h3>What is sequence alignment?</h3><p>Aligning two DNA sequences means writing them one above the other and inserting gaps (“-”) so that similar bases line up. Each column is a match, a mismatch (substitution) or a gap (insertion or deletion). A scoring scheme rewards matches and penalises the rest, and the optimal alignment is the one with the highest total score.</p></section>" +
+      "<section><h3>Why dynamic programming?</h3><p>Two sequences of length 100 have more than 10<sup>75</sup> possible alignments, far too many to try. DP works because the problem has two properties:</p><ul><li><b>Optimal substructure.</b> The best alignment of X[1..i] and Y[1..j] ends in one of three columns (Xᵢ/Yⱼ, Xᵢ/−, −/Yⱼ), and whatever comes before that column must itself be an optimal alignment of the shorter prefixes. This is Bellman’s principle of optimality.</li><li><b>Overlapping sub-problems.</b> The same prefix pair (i, j) is needed by three larger problems, so it is solved once and stored in the matrix.</li></ul></section>" +
+      '<section><h3>Recurrence</h3><div class="formula">F[0][0] = 0,   F[i][0] = i·gap,   F[0][j] = j·gap\nF[i][j] = max( F[i-1][j-1] + s(Xᵢ, Yⱼ),   diagonal: Xᵢ with Yⱼ\n               F[i-1][j]   + gap,         up: Xᵢ with a gap\n               F[i][j-1]   + gap )        left: a gap with Yⱼ\ns(a,b) = ' + sc.match + " if a = b, " + sc.mismatch + " otherwise;   gap = " + g + "\nSmith–Waterman adds a 4th option 0, and its answer is the largest cell.</div></section>" +
+      "<section><h3>Why cumulative gap penalties in the first row and column?</h3><p>F[i][0] is the score of aligning the first i bases of sequence 1 with nothing. The only way is i gaps, so F[i][0] = i × gap. These base cases force a global alignment to account for every base.</p></section>" +
+      "<section><h3>Traceback and multiple optimal alignments</h3><p>While filling, each cell remembers which neighbour gave its maximum. Starting at F[m][n] and following those pointers back to F[0][0] rebuilds the alignment in reverse. When candidates tie, each tied pointer leads to a different alignment with the same optimal score. The page counts them by DP over the pointer graph and lists up to 12.</p></section>" +
+      "<section><h3>Global vs local</h3><p>Needleman–Wunsch aligns the sequences end to end. Smith–Waterman floors every cell at 0 and starts its traceback from the best cell, so it reports the most similar region and ignores the rest. Use global alignment for sequences of similar length and origin, and local alignment to find a shared motif or domain inside longer, otherwise unrelated sequences.</p></section>" +
+      "<section><h3>Complexity</h3><p>There are (m+1)(n+1) cells and each needs O(1) work, so time is <b>O(mn)</b>. The score and pointer matrices take <b>O(mn)</b> space, and traceback adds O(m+n). Hirschberg’s algorithm can cut space to O(m+n), which is outside this project’s scope.</p></section>" +
+      "<section><h3>Worked example from the current input</h3>" + worked + "</section>";
+  }
+
+  // ---------------------------------------------------------------- tabs
+  $("tabs").onclick = function (ev) {
+    var b = ev.target.closest(".tab"); if (!b) return;
+    S.view = b.dataset.v;
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) { t.setAttribute("aria-selected", t === b); $("v-" + t.dataset.v).hidden = t !== b; });
+  };
+
+  function renderAll() { renderSummary(); renderFill(); renderTb(); renderVs(); renderExp(); renderTheory(); }
+
+  // opening state: the brief's own example, already aligned
+  $("s1").value = "AGTCA"; $("s2").value = "AGCA";
+  renderExamples(); showValidation(); run();
+})();
+</script>
