@@ -27,8 +27,6 @@ st.markdown(CSS + """
 .block-container{padding-top:2.2rem;max-width:1250px}
 h1{font-weight:700;letter-spacing:-.02em}
 .hero{color:#4b5563;font-size:1.02rem;max-width:860px}
-.pill{display:inline-block;background:#e6f4f1;color:#0b5c4c;border-radius:999px;padding:2px 10px;
-      font-size:12px;font-weight:600;margin-right:6px}
 .small{color:#6b7280;font-size:13px}
 .formula{font-family:'JetBrains Mono',ui-monospace,monospace;background:#f6f7f9;border:1px solid #e3e6ea;
          border-radius:8px;padding:10px 14px;font-size:13.5px;white-space:pre;overflow-x:auto}
@@ -113,8 +111,6 @@ if "booted" not in ss:          # show a worked result on first load
     run_alignment()
 
 # ------------------------------------------------------------------ 1. header
-st.markdown('<span class="pill">Dynamic Programming</span><span class="pill">Bioinformatics</span>'
-            '<span class="pill">26B12MA312 · PBL</span>', unsafe_allow_html=True)
 st.title("DNA Sequence Alignment Using Dynamic Programming")
 st.markdown('<p class="hero">Two DNA sequences can differ by substitutions, insertions and deletions. '
             'The <b>Needleman–Wunsch</b> algorithm finds the best possible global alignment by solving '
